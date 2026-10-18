@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Delhi within 200 km: cities, NCR districts, ring roads, highways, mandis and LCV entry routes.">
+<style>
+/* baseline the artifact host used to supply */
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Delhi 200 km Radius</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Eczar:wght@500;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Two views on one canvas: 200 km region sheet and a 26 km ring-road sheet. Survey-sheet palette. */
+:root{
+  --bg:#FFFFFF; --surface:#FBFBF8; --surface-2:#F2F3EE;
+  --ink:#1C2119; --ink-2:#585E53; --ink-3:#8C927F;
+  --rule:#DCDFD2; --rule-soft:#E8EADF;
+  --accent:#A33B2A;
+  --road:#FFFFFF; --expressway:#E3A712; --nh-case:#5A6054; --ringroad:#CC1F1F; --water:#4E7A8A; --lcv:#2E8B2E;
+  --c-ncr:#2F5880; --c-town:#6B7164; --c-mandi:#1F7A4D; --c-transit:#6A3FA0; --c-ev:#0C7A84;
+  --shadow:0 1px 2px rgba(34,40,31,.14), 0 6px 18px rgba(34,40,31,.08);
+  --fd:"Eczar",Georgia,serif;
+  --fc:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;
+  --fb:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#12160F; --surface:#1A1F17; --surface-2:#232A1F;
+  --ink:#E2E6D8; --ink-2:#A2A995; --ink-3:#767D6A;
+  --rule:#333A2C; --rule-soft:#2A3024;
+  --accent:#E07A5F;
+  --road:#FFFFFF; --expressway:#F5C33C; --nh-case:#0B0E08; --ringroad:#FF5B4A; --water:#6FA3B5; --lcv:#5FD45F;
+  --c-ncr:#86B2DE; --c-town:#A8AF9A; --c-mandi:#52C08A; --c-transit:#BB94E8; --c-ev:#45CFDC;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#12160F; --surface:#1A1F17; --surface-2:#232A1F;
+  --ink:#E2E6D8; --ink-2:#A2A995; --ink-3:#767D6A;
+  --rule:#333A2C; --rule-soft:#2A3024;
+  --accent:#E07A5F;
+  --road:#FFFFFF; --expressway:#F5C33C; --nh-case:#0B0E08; --ringroad:#FF5B4A; --water:#6FA3B5; --lcv:#5FD45F;
+  --c-ncr:#86B2DE; --c-town:#A8AF9A; --c-mandi:#52C08A; --c-transit:#BB94E8; --c-ev:#45CFDC;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:14px;line-height:1.5;margin:0;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+.shell{display:grid;grid-template-rows:auto 1fr;height:100%;min-height:0}
+
+/* ---- header ---- */
+.top{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding-block:9px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  border-bottom:1px solid var(--rule);background:var(--surface);
+  position:relative;z-index:6;
+}
+.top h1{font-family:var(--fd);font-weight:700;font-size:21px;line-height:1.1;margin:0;letter-spacing:-.01em}
+.top h1 em{font-style:normal;color:var(--accent)}
+.seg{display:flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--bg)}
+.seg button{font-family:var(--fc);font-size:11.5px;letter-spacing:.05em;padding:5px 11px;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button.on{background:var(--ink);color:var(--bg);font-weight:600}
+.top .sub{font-family:var(--fc);font-size:12px;color:var(--ink-2);letter-spacing:.02em;flex:1 1 180px;min-width:0}
+.themebtn{font-family:var(--fc);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--rule);border-radius:2px;padding:4px 8px}
+.themebtn:hover{color:var(--ink);border-color:var(--ink-3)}
+
+.main{display:grid;grid-template-columns:1fr 352px;min-height:0}
+
+/* ---- map ---- */
+.mapwrap{position:relative;min-width:0;overflow:hidden;background:var(--bg);touch-action:none;cursor:grab}
+.mapwrap.drag{cursor:grabbing}
+.mapwrap svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ring{fill:none;stroke:var(--accent);stroke-opacity:.3;stroke-width:1.1}
+.ring.major{stroke-opacity:.7;stroke-width:1.7}
+.ring.faint{stroke-opacity:.15;stroke-dasharray:4 5}
+.spoke{stroke:var(--ink-3);stroke-opacity:.24;stroke-width:.7;stroke-dasharray:2 7}
+.ringlab{font-family:var(--fc);font-size:14px;font-weight:600;fill:var(--accent);letter-spacing:.06em}
+.compass{font-family:var(--fc);font-size:14px;font-weight:600;fill:var(--ink-3);letter-spacing:.14em}
+.statelab{font-family:var(--fc);font-size:14px;font-weight:600;fill:var(--ink-3);letter-spacing:.22em;text-transform:uppercase;opacity:.7}
+.road{fill:none;stroke:var(--road);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.road.exp{stroke-width:2.1;stroke:var(--expressway)}
+.road.case{stroke:var(--nh-case);stroke-width:3.1;opacity:.95}
+.road.case.exp{stroke-width:3.7}
+.roadlab{font-family:var(--fc);font-size:9.5px;font-weight:600;fill:var(--road);letter-spacing:.08em;
+  stroke:var(--nh-case);stroke-width:1.9px;stroke-linejoin:round;paint-order:stroke fill}
+.roadlab.exp{fill:var(--expressway)}
+.lcv{fill:none;stroke:var(--lcv);stroke-width:8;opacity:.2;stroke-linecap:round;stroke-linejoin:round}
+.lcvline{fill:none;stroke:var(--lcv);stroke-width:1.5;stroke-dasharray:7 5;opacity:.95;stroke-linecap:round;marker-end:url(#lcvarrow)}
+.lcvlab{font-family:var(--fc);font-size:10px;font-weight:600;fill:var(--lcv);letter-spacing:.09em;text-transform:uppercase}
+.river{fill:none;stroke:var(--water);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
+.rring{fill:none;stroke:var(--ringroad);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;opacity:1}
+.rring.dash{stroke-dasharray:5 3.5;stroke-width:1.1;opacity:.85}
+.rring.big{stroke-width:2.2}
+.rring.big.dash{stroke-width:1.7}
+.rringlab{font-family:var(--fc);font-size:12px;font-weight:600;fill:var(--ringroad);letter-spacing:.09em}
+.rringlab.big{font-size:14px;letter-spacing:.14em;text-transform:uppercase}
+#g-ringroads[data-z="far"] .rringlab{display:none}
+.hairline{stroke:var(--accent);stroke-width:1.2;stroke-dasharray:5 4;opacity:.95}
+.lyr-off,.view-off{display:none}
+
+/* ---- overlay markers ---- */
+.layer{position:absolute;inset:0;pointer-events:none}
+.mk{position:absolute;pointer-events:auto;transform:translate(-50%,-50%);cursor:pointer;z-index:2}
+.mk .glyph{display:block;width:19px;height:19px;transition:transform .12s ease}
+.mk.star .glyph{width:26px;height:26px}
+.mk:hover .glyph,.mk.sel .glyph{transform:scale(1.3)}
+.mk.dim{opacity:.17;pointer-events:none}
+.mk.hide{display:none}
+.mk.soft{opacity:.18}
+.mk.soft:hover{opacity:1}
+.lab.soft{opacity:.3;font-weight:400}
+.lab.star{font-weight:700;color:var(--ink);font-size:14px}
+.mk.sel{z-index:5}
+.lab{
+  position:absolute;pointer-events:none;font-family:var(--fc);font-size:14px;font-weight:500;
+  color:var(--ink);white-space:nowrap;z-index:3;letter-spacing:.01em;
+  text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 5px var(--bg),0 0 7px var(--bg);
+}
+.lab.hi{font-weight:700;color:var(--accent);font-size:14px;z-index:6}
+.lab.dim{display:none}
+.hub{position:absolute;transform:translate(-50%,-50%);z-index:4;pointer-events:auto;cursor:pointer}
+.hub.sm .dot{width:7px;height:7px;box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--accent)}
+.hub.sm .nm{margin-top:-16px;font-size:14px}
+.hub .dot{width:15px;height:15px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--bg),0 0 0 4.4px var(--accent)}
+.hub.az .dot{width:17px;height:17px;border-radius:3px;transform:rotate(45deg);background:var(--c-mandi);
+  box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--c-mandi),0 0 0 11px color-mix(in srgb,var(--c-mandi) 22%,transparent)}
+.hub.az .nm{color:var(--c-mandi);margin-top:-26px;letter-spacing:.04em}
+.hub .nm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--fd);font-weight:700;font-size:16px;color:var(--accent);white-space:nowrap;margin-top:-20px;text-shadow:0 0 4px var(--bg),0 0 8px var(--bg)}
+
+/* ---- map chrome ---- */
+.chrome{position:absolute;display:flex;flex-direction:column;gap:6px;z-index:7}
+.chrome.tl{top:calc(10px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px))}
+.chrome.br{bottom:calc(10px + env(safe-area-inset-bottom,0px));right:max(10px,env(safe-area-inset-right,0px));align-items:flex-end}
+.zoomgrp{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.zoomgrp button{width:30px;height:28px;font-size:15px;line-height:1;color:var(--ink-2);display:grid;place-items:center}
+.zoomgrp button+button{border-top:1px solid var(--rule)}
+.zoomgrp button:hover{background:var(--surface-2);color:var(--ink)}
+.zoomgrp button.wide{width:auto;padding:0 9px;font-family:var(--fc);font-size:10px;letter-spacing:.09em;text-transform:uppercase}
+.layers{background:var(--surface);border:1px solid var(--rule);border-radius:3px;padding:7px 9px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px}
+.layers b{font-family:var(--fc);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:2px}
+.layers label{display:flex;align-items:center;gap:6px;font-family:var(--fc);font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.layers input{accent-color:var(--accent);width:12px;height:12px;margin:0}
+.swatch{width:14px;height:2.5px;background:var(--ringroad);display:inline-block;border-radius:2px}
+.scalebar{background:var(--surface);border:1px solid var(--rule);border-radius:3px;padding:5px 8px 6px;box-shadow:var(--shadow);font-family:var(--fc);font-size:10px;color:var(--ink-2);letter-spacing:.05em}
+.scalebar .bar{height:5px;border:1px solid var(--ink-3);border-top:0;margin-top:3px}
+
+/* ---- panel ---- */
+.panel{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--rule);background:var(--surface)}
+.pad{padding-left:14px;padding-right:14px}
+.searchrow{display:flex;gap:7px;padding-block:11px 9px;border-bottom:1px solid var(--rule-soft)}
+.searchrow input{flex:1;min-width:0;font-family:var(--fc);font-size:15px;padding:6px 9px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:2px}
+.searchrow input::placeholder{color:var(--ink-3)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;padding-block:10px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--fc);font-size:12.5px;letter-spacing:.03em;padding:3.5px 8px;border:1px solid var(--rule);border-radius:999px;color:var(--ink-2);background:var(--bg)}
+.chip svg{flex:none}
+.chip.on{border-color:currentColor;background:var(--surface-2);color:var(--ink)}
+.chip.off{opacity:.42}
+.chip .n{font-variant-numeric:tabular-nums;color:var(--ink-3);font-size:10px}
+.ringrow{display:flex;gap:4px;padding-bottom:10px;border-bottom:1px solid var(--rule-soft)}
+.ringrow button{flex:1;font-family:var(--fc);font-size:12px;letter-spacing:.04em;padding:4px 2px;border:1px solid var(--rule);border-radius:2px;color:var(--ink-2);background:var(--bg);font-variant-numeric:tabular-nums}
+.ringrow button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .ringrow button.on,:root:not([data-theme="light"]) .ringrow button.on{color:#15190F}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .ringrow button.on{color:#fff}}
+
+.list{flex:1;overflow-y:auto;min-height:0;scrollbar-width:thin}
+.grp{font-family:var(--fc);font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);padding:13px 14px 5px;position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--rule-soft)}
+.row{display:grid;grid-template-columns:18px 1fr auto;gap:9px;align-items:center;width:100%;text-align:left;padding:6px 14px;border-bottom:1px solid var(--rule-soft)}
+.row:hover{background:var(--surface-2)}
+.row.sel{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent)}
+.row .nm{font-family:var(--fc);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .nm small{color:var(--ink-3);font-size:12.5px;letter-spacing:.06em;margin-left:5px}
+.row .km{font-family:var(--fc);font-size:13.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .km b{color:var(--ink);font-weight:600}
+.empty{padding:26px 14px;color:var(--ink-3);font-size:13px;text-align:center}
+
+/* ---- detail ---- */
+.detail{border-top:1px solid var(--rule);background:var(--surface-2);padding-block:12px 14px;max-height:47%;overflow-y:auto}
+.detail .kicker{font-family:var(--fc);font-size:9.5px;font-weight:600;letter-spacing:.17em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.detail h2{font-family:var(--fd);font-weight:700;font-size:23px;line-height:1.15;margin:4px 0 0;letter-spacing:-.01em;text-wrap:balance}
+.facts{display:flex;gap:16px;margin:9px 0 0;padding:8px 0;border-block:1px solid var(--rule);flex-wrap:wrap}
+.fact{min-width:0}
+.fact dt{font-family:var(--fc);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0}
+.fact dd{margin:1px 0 0;font-family:var(--fc);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.fact dd.ring{color:var(--ringroad)}
+.detail p{margin:9px 0 0;font-size:14px;line-height:1.6;color:var(--ink-2);max-width:60ch}
+.detail .hint{margin-top:10px;font-family:var(--fc);font-size:11.5px;color:var(--ink-3)}
+.closebtn{margin-left:auto;font-family:var(--fc);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.closebtn:hover{color:var(--accent)}
+
+@media (max-width:860px){
+  .main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,auto)}
+  .mapwrap{min-height:44vh}
+  .panel{border-left:0;border-top:1px solid var(--rule);max-height:52vh}
+  .list{max-height:28vh}
+  .detail{max-height:none}
+  .top h1{font-size:19px}
+  .top .sub{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <h1>Delhi <em id="h1scale">200&nbsp;km</em></h1>
+    <div class="seg" id="seg">
+      <button data-v="region" class="on">Region</button>
+      <button data-v="delhi">Ring roads</button>
+    </div>
+    <div class="sub" id="subtitle">Cities, towns and NCR districts inside a 200 km circle.</div>
+    <button class="themebtn" id="theme">Theme</button>
+  </header>
+
+  <div class="main">
+    <div class="mapwrap" id="mapwrap">
+      <svg id="svg" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet" aria-label="Map of Delhi and its surroundings">
+        <defs>
+          <marker id="lcvarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10Z" fill="var(--lcv)"/>
+          </marker>
+        </defs>
+        <g id="zoom">
+          <g id="v-region">
+            <g id="g-roads"></g>
+            <g id="g-ringroads"></g>
+            <g id="g-rings"></g>
+            <g id="g-states"></g>
+          </g>
+          <g id="v-delhi" class="view-off">
+            <g id="d-river"></g>
+            <g id="d-lcv"></g>
+            <g id="d-roads"></g>
+            <g id="d-ringroads"></g>
+            <g id="d-rings"></g>
+          </g>
+          <g id="g-sel"></g>
+        </g>
+      </svg>
+      <div class="layer" id="layer"></div>
+
+      <div class="chrome tl">
+        <div class="layers">
+          <b>Layers</b>
+          <label><input type="checkbox" id="l-rings" checked> Distance rings</label>
+          <label><input type="checkbox" id="l-roads" checked> National highways</label>
+          <label><input type="checkbox" id="l-ringroads" checked> Ring roads <span class="swatch"></span></label>
+          <label><input type="checkbox" id="l-lcv" checked> LCV entry routes <span class="swatch" style="background:var(--lcv)"></span></label>
+          <label><input type="checkbox" id="l-states" checked> State names</label>
+          <label><input type="checkbox" id="l-labels" checked> Place names</label>
+          <label><input type="checkbox" id="l-focus" checked> Dim everything else</label>
+        </div>
+      </div>
+
+      <div class="chrome br">
+        <div class="zoomgrp">
+          <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+          <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+          <button id="zreset" class="wide" title="Reset view">Fit</button>
+        </div>
+        <div class="scalebar"><span id="scaletxt">50 km</span><div class="bar" id="scalebar" style="width:80px"></div></div>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="pad searchrow">
+        <input id="q" type="search" placeholder="Search" autocomplete="off" aria-label="Search places">
+      </div>
+      <div class="pad"><div class="chips" id="chips"></div></div>
+      <div class="pad ringrow" id="ringrow"></div>
+      <div class="list" id="list"></div>
+      <div class="detail pad" id="detail"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- geography ---------------- */
+var HUB={lat:28.6139,lon:77.2090};            /* Connaught Place, origin of the region sheet */
+var AZ={lat:28.7110,lon:77.1780};             /* Azadpur Mandi, origin of the ring road sheet */
+var R=6371.0088, D2R=Math.PI/180, CX=500, CY=500;
+function dist(la,lo,O){O=O||HUB;
+  var p1=O.lat*D2R,p2=la*D2R,dp=(la-O.lat)*D2R,dl=(lo-O.lon)*D2R;
+  var h=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return 2*R*Math.asin(Math.sqrt(h));}
+function bear(la,lo,O){O=O||HUB;
+  var p1=O.lat*D2R,p2=la*D2R,dl=(lo-O.lon)*D2R;
+  var y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+  return (Math.atan2(y,x)/D2R+360)%360;}
+var COMPASS=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+function card(b){return COMPASS[Math.floor(((b+11.25)%360)/22.5)];}
+
+/* azimuthal equidistant about Connaught Place: radial distance is true at any scale */
+function proj(la,lo,S,O){var d=dist(la,lo,O),b=bear(la,lo,O)*D2R;
+  return {x:CX+d*Math.sin(b)*S, y:CY-d*Math.cos(b)*S};}
+function path(arr,S,O){return arr.map(function(c,i){var p=proj(c[0],c[1],S,O);
+  return (i?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1);}).join(" ");}
+
+var S_R=440/200, S_D=440/38;    /* px per km in each view */
+
+/* ---------------- categories ---------------- */
+var CATS={
+  ncr:{label:"NCR districts",color:"--c-ncr",shape:"sq"},
+  town:{label:"Other cities & towns",color:"--c-town",shape:"ci"},
+  node:{label:"On the ring roads",color:"--ringroad",shape:"sq"},
+  hub:{label:"Landmarks & transport",color:"--c-ncr",shape:"di"},
+  mandi:{label:"Mandis & depots",color:"--c-mandi",shape:"tr"},
+  transit:{label:"Stations & ISBTs",color:"--c-transit",shape:"rc"},
+  ev:{label:"EV charging",color:"--c-ev",shape:"pl"},
+  area:{label:"Neighbourhoods",color:"--c-town",shape:"ci"},
+  edge:{label:"NCR cities beyond",color:"--ink-3",shape:"ho"}
+};
+function glyph(cat){
+  var c="var("+CATS[cat].color+")", st='stroke="var(--bg)" stroke-width="1.6"';
+  var body={
+    sq:'<rect x="1.5" y="1.5" width="8" height="8" fill="'+c+'" '+st+'/>',
+    ci:'<circle cx="5.5" cy="5.5" r="3.4" fill="'+c+'" '+st+'/>',
+    di:'<path d="M5.5 .8 9.9 5.5 5.5 10.2 1.1 5.5Z" fill="'+c+'" '+st+'/>',
+    tr:'<path d="M5.5 1 10.3 9.8H.7Z" fill="'+c+'" '+st+'/>',
+    rc:'<rect x="0.6" y="2.4" width="9.8" height="6.2" rx="1" fill="'+c+'" '+st+'/>',
+    pl:'<path d="M4.2 .7h2.6v3.5h3.5v2.6H6.8v3.5H4.2V6.8H.7V4.2h3.5Z" fill="'+c+'" '+st+'/>',
+    ho:'<circle cx="5.5" cy="5.5" r="3.6" fill="none" stroke="'+c+'" stroke-width="1.5" stroke-dasharray="2.2 1.8"/>'
+  }[CATS[cat].shape];
+  return '<svg class="glyph" viewBox="0 0 11 11" aria-hidden="true">'+body+'</svg>';
+}
+
+/* ---------------- region places: [name, lat, lon, cat, state, rank, note] ---------------- */
+var P_REGION=[
+["Gurugram",28.4595,77.0266,"ncr","Haryana",1,"Glass-tower edge of the Aravallis. Cyber City offices, and the road south to Sohna and Damdama."],
+["Noida",28.5355,77.3910,"ncr","Uttar Pradesh",1,"Planned grid city across the Yamuna. Film City studios and the start of the Yamuna Expressway."],
+["Ghaziabad",28.6692,77.4538,"ncr","Uttar Pradesh",1,"Dense industrial suburb on the Delhi to Meerut corridor, now linked by the RapidX regional rail."],
+["Faridabad",28.4089,77.3178,"ncr","Haryana",1,"Industrial city on the old Delhi to Agra road, with the Aravalli foothills on its western flank."],
+["Greater Noida",28.4744,77.5040,"ncr","Uttar Pradesh",2,"Wide boulevards, university campuses and the Buddh International Circuit."],
+["Bahadurgarh",28.6926,76.9240,"ncr","Haryana",2,"Footwear and auto-parts town where Delhi spills into Haryana on the Rohtak road."],
+["Sonipat",28.9931,77.0151,"ncr","Haryana",2,"Ashoka University, the Rai sports complex and the Murthal dhaba strip just south of it."],
+["Baghpat",28.9449,77.2184,"ncr","Uttar Pradesh",2,"Sugarcane country in the Yamuna doab, on the new Delhi to Dehradun expressway."],
+["Hapur",28.7306,77.7759,"ncr","Uttar Pradesh",2,"Steel pipes, jaggery mandis and the turn-off for the Ganga at Garhmukteshwar."],
+["Meerut",28.9845,77.7064,"ncr","Uttar Pradesh",1,"Where the 1857 revolt began. Today India's sports-goods and musical-instrument capital."],
+["Rohtak",28.8955,76.6066,"ncr","Haryana",2,"University town and wrestling heartland, with the Tilyar lake on its edge."],
+["Bulandshahr",28.4070,77.8498,"ncr","Uttar Pradesh",2,"Agricultural district headquarters. Khurja's pottery kilns sit inside it."],
+["Palwal",28.1447,77.3260,"ncr","Haryana",2,"Market town on the Agra road, remembered for Gandhi's 1919 arrest at its railway station."],
+["Jhajjar",28.6063,76.6565,"ncr","Haryana",2,"Quiet district town between Rohtak and Gurugram, with wetlands to its south."],
+["Nuh",28.1050,77.0010,"ncr","Haryana",2,"Headquarters of Mewat, ringed by bare Aravalli hills and old Meo villages."],
+["Rewari",28.1970,76.6170,"ncr","Haryana",2,"Brassware town and home of the national steam locomotive shed, the last working one in India."],
+["Panipat",29.3909,76.9635,"ncr","Haryana",1,"Three battles decided north India here. Now a handloom and recycled-textile hub."],
+["Charkhi Dadri",28.5921,76.2711,"ncr","Haryana",3,"Small district carved out of Bhiwani, known for its stone quarries."],
+["Shamli",29.4500,77.3100,"ncr","Uttar Pradesh",3,"Sugar-belt town in the upper doab, on the Delhi to Saharanpur line."],
+["Bhiwani",28.7975,76.1322,"ncr","Haryana",2,"The boxing nursery of India, and a town of old temples that gave it the name Chhoti Kashi."],
+["Muzaffarnagar",29.4727,77.7085,"ncr","Uttar Pradesh",2,"Jaggery capital of the country, at the centre of the western UP cane belt."],
+["Mahendragarh",28.2800,76.1500,"ncr","Haryana",3,"Dry south Haryana district with the Dhosi hill and a central university campus."],
+["Karnal",29.6857,76.9905,"ncr","Haryana",2,"Rice bowl of Haryana and home of the National Dairy Research Institute."],
+["Alwar",27.5530,76.6346,"ncr","Rajasthan",1,"Bala Qila fort above the town and a City Palace below. The Rajasthan edge of the NCR."],
+["Bharatpur",27.2152,77.4900,"ncr","Rajasthan",1,"Jat capital with the unbreached Lohagarh fort, and Keoladeo park on its doorstep."],
+["Murthal",29.0300,77.0700,"town","Haryana",3,"A few kilometres of dhabas on NH-44 that stay open all night."],
+["Manesar",28.3500,76.9400,"town","Haryana",3,"Auto-manufacturing belt and the start of the Western Peripheral expressway."],
+["Pataudi",28.3200,76.7800,"town","Haryana",3,"Former princely seat with the Ibrahim Kothi palace, now a hotel."],
+["Sohna",28.2473,77.0656,"town","Haryana",3,"Sulphur hot springs below an Aravalli ridge, forty minutes past Gurugram."],
+["Dharuhera",28.2000,76.8000,"town","Haryana",3,"Two-wheeler manufacturing cluster on NH-48 at the Rajasthan border."],
+["Bhiwadi",28.2100,76.8600,"town","Rajasthan",3,"Rajasthan's industrial estate pressed against the Haryana border."],
+["Neemrana",27.9897,76.3852,"town","Rajasthan",3,"Industrial zone on NH-48, below a fifteenth-century hill fort."],
+["Khurja",28.2535,77.8544,"town","Uttar Pradesh",3,"Four hundred years of glazed pottery. Workshops sell seconds straight off the kiln."],
+["Jewar",28.1700,77.6000,"town","Uttar Pradesh",2,"Site of Noida International Airport, built to take pressure off Delhi."],
+["Modinagar",28.8340,77.5780,"town","Uttar Pradesh",3,"Company town founded on sugar and textile mills on the Meerut road."],
+["Jind",29.3167,76.3167,"town","Haryana",3,"One of Haryana's oldest districts, with the Rani Talab tank at its centre."],
+["Hisar",29.1492,75.7217,"town","Haryana",2,"Firoz Shah's fourteenth-century fort town, now a farm-university and steel city."],
+["Narnaul",28.0444,76.1061,"town","Haryana",3,"Jal Mahal in a tank, Birbal ka Chhatta, and the Dhosi hill crater nearby."],
+["Pilani",28.3670,75.6030,"town","Rajasthan",3,"Desert-edge campus town built around BITS Pilani and the Birla museum."],
+["Jhunjhunu",28.1289,75.3996,"town","Rajasthan",3,"Edge of Shekhawati. Painted merchant havelis in the lanes around the town."],
+["Kurukshetra",29.9695,76.8783,"town","Haryana",1,"Battlefield of the Mahabharata, with the Brahma Sarovar tank at its centre."],
+["Kaithal",29.8015,76.3995,"town","Haryana",3,"Grain-market town on the Haryana and Punjab border."],
+["Yamunanagar",30.1290,77.2674,"town","Haryana",3,"Plywood and sugar town below the Shivaliks, near the Hathnikund barrage."],
+["Ambala",30.3752,76.7821,"town","Haryana",2,"Cantonment and junction city. Scientific-instrument manufacturing. Sits almost exactly on the 200 km line."],
+["Saharanpur",29.9640,77.5460,"town","Uttar Pradesh",2,"Wood carving centre for two centuries, with the Company Bagh botanical garden."],
+["Deoband",29.6940,77.6800,"town","Uttar Pradesh",3,"Seminary town on the Saharanpur road, home of Darul Uloom since 1866."],
+["Roorkee",29.8543,77.8880,"town","Uttarakhand",2,"IIT Roorkee, the oldest engineering college in Asia, and the Ganga canal headworks."],
+["Haridwar",29.9457,78.1642,"town","Uttarakhand",1,"Where the Ganga reaches the plains. Evening aarti at Har ki Pauri."],
+["Rishikesh",30.0869,78.2676,"town","Uttarakhand",1,"Ashrams, suspension bridges and the white-water rafting stretch above the town."],
+["Bijnor",29.3724,78.1360,"town","Uttar Pradesh",3,"On the east bank of the Ganga where it leaves the hills, below the Bijnor barrage."],
+["Garhmukteshwar",28.7869,78.1030,"town","Uttar Pradesh",2,"The closest Ganga ghat to Delhi, on NH-9 past Hapur."],
+["Amroha",28.9031,78.4675,"town","Uttar Pradesh",3,"Mango orchards, dhol makers and the dargah of Shah Vilayat."],
+["Moradabad",28.8386,78.7733,"town","Uttar Pradesh",2,"Brass city. Engraved and electroplated metalware exported worldwide."],
+["Rampur",28.8008,79.0250,"town","Uttar Pradesh",3,"Nawabi town with the Raza Library, a remarkable collection of manuscripts and miniatures."],
+["Aligarh",27.8974,78.0880,"town","Uttar Pradesh",2,"Aligarh Muslim University and the lock-making workshops that gave the town its other name."],
+["Hathras",27.5964,78.0526,"town","Uttar Pradesh",3,"Asafoetida and spice trading town between Mathura and Aligarh."],
+["Narora",28.1900,78.3800,"town","Uttar Pradesh",3,"Ganga barrage town with an atomic power station and a quiet river stretch."],
+["Mathura",27.4924,77.6737,"town","Uttar Pradesh",1,"Krishna's birthplace, with ghats along the Yamuna and a major refinery on its outskirts."],
+["Vrindavan",27.5820,77.7000,"town","Uttar Pradesh",2,"Temple town north of Mathura. Banke Bihari, Prem Mandir and ISKCON draw crowds through the year."],
+["Agra",27.1767,78.0081,"town","Uttar Pradesh",1,"Mughal capital on the Yamuna. The fort, Itimad-ud-Daulah and the Taj sit within a few kilometres of each other."],
+["Fatehpur Sikri",27.0945,77.6617,"town","Uttar Pradesh",3,"Small town below Akbar's abandoned red sandstone capital."],
+["Deeg",27.4667,77.3167,"town","Rajasthan",3,"Bharatpur district town built around a Jat water palace."]
+];
+
+/* ---------------- ring road view: [name, lat, lon, cat, ring, rank, note] ---------------- */
+var P_DELHI=[
+/* junctions on the loops */
+["Kashmere Gate",28.6670,77.2280,"node","Ring Road",1,"North end of the inner Ring Road. ISBT for Uttarakhand and Punjab, and the metro's busiest interchange."],
+["Rajghat",28.6410,77.2490,"node","Ring Road",2,"Ring Road along the Yamuna embankment, past the memorials."],
+["Sarai Kale Khan",28.5880,77.2580,"node","Ring Road",1,"ISBT, Nizamuddin railway station and the RapidX terminal for Meerut, all at one Ring Road junction."],
+["Ashram",28.5720,77.2600,"node","Ring Road",1,"Where the Ring Road crosses Mathura Road. The underpass opened in 2022 and the flyover extension in 2023."],
+["Moolchand",28.5670,77.2380,"node","Ring Road",2,"Ring Road junction between Lajpat Nagar and Defence Colony."],
+["AIIMS",28.5670,77.2070,"node","Ring Road",1,"Hospital complex at the Ring Road and Aurobindo Marg crossing, one of the busiest chowks in the city."],
+["Dhaula Kuan",28.5930,77.1610,"node","Both",1,"The pivot of the whole network. Ring Road, Outer Ring Road and NH-48 to Gurugram all meet here."],
+["Naraina",28.6280,77.1410,"node","Both",2,"Industrial area where the two ring roads run close together on the west."],
+["Punjabi Bagh",28.6690,77.1330,"node","Ring Road",2,"Ring Road junction on Rohtak Road, rebuilt as a double-decker flyover."],
+["Azadpur",28.7070,77.1760,"node","Ring Road",1,"Asia's largest fruit and vegetable mandi, at the Ring Road's northern corner."],
+["Mukarba Chowk",28.7140,77.1620,"node","Outer Ring Road",1,"Where the Outer Ring Road meets NH-44 heading north to Sonipat and Panipat."],
+["Madhuban Chowk",28.6960,77.1180,"node","Outer Ring Road",2,"Outer Ring Road crossing into Pitampura and Rohini."],
+["Peeragarhi",28.6810,77.0850,"node","Outer Ring Road",2,"North-west corner of the Outer Ring Road, on the Rohtak Road out to Bahadurgarh."],
+["Raja Garden",28.6550,77.1230,"node","Outer Ring Road",2,"Outer Ring Road junction with Najafgarh Road, ringed by malls."],
+["Munirka",28.5460,77.1850,"node","Outer Ring Road",2,"IIT gate stretch of the Outer Ring Road, with JNU and Vasant Vihar either side."],
+["Chirag Delhi",28.5370,77.2230,"node","Outer Ring Road",2,"Flyover junction on the southern arc, linking to Saket and Greater Kailash."],
+["Nehru Place",28.5490,77.2520,"node","Outer Ring Road",1,"The country's largest computer and hardware market, on the southern Outer Ring Road."],
+["Sarita Vihar",28.5450,77.2930,"node","Outer Ring Road",1,"Outer Ring Road meets the DND Flyway to Noida and the Mathura Road south."],
+["Mayur Vihar",28.6060,77.3020,"node","Outer Ring Road",2,"East-bank stretch of the Outer Ring Road, between the Yamuna and Noida."],
+["Ghazipur",28.6270,77.3180,"node","Outer Ring Road",1,"NH-9 interchange with the fish and poultry mandi and the landfill alongside."],
+["Seelampur",28.6760,77.2780,"node","Outer Ring Road",2,"Trans-Yamuna stretch of the Outer Ring Road through north-east Delhi."],
+["Wazirabad",28.7220,77.2330,"node","Outer Ring Road",1,"Yamuna crossing where the Outer Ring Road closes its loop, beside the Signature Bridge."],
+
+/* landmarks and transport */
+["Connaught Place",28.6315,77.2167,"hub","",1,"The centre of New Delhi and the point every distance on this map is measured from."],
+["Chandni Chowk",28.6562,77.2300,"hub","",2,"Shahjahanabad's main bazaar street, inside the Ring Road's northern arc."],
+["Karol Bagh",28.6519,77.1909,"hub","",2,"Shopping district between Connaught Place and the Ring Road."],
+["ITO",28.6280,77.2410,"hub","",2,"Government offices and the Ring Road's crossing of Bahadur Shah Zafar Marg."],
+["India Gate",28.6129,77.2295,"hub","",2,"Centre of the Lutyens grid, just inside the Ring Road."],
+["Pragati Maidan",28.6150,77.2430,"hub","",3,"Exhibition grounds served by the Ring Road tunnel opened in 2022."],
+["Akshardham",28.6127,77.2773,"hub","",2,"Temple complex on the east bank, beside NH-9 and the Delhi to Meerut expressway."],
+
+["Aerocity",28.5520,77.1230,"hub","",2,"Hotel district between the airport and the Outer Ring Road."],
+["Hauz Khas",28.5535,77.1943,"hub","",2,"Village, deer park and a metro interchange on the Outer Ring Road."],
+["Saket",28.5244,77.2060,"hub","",2,"Mall cluster and district courts, south of the Outer Ring Road."],
+["Rajouri Garden",28.6490,77.1200,"hub","",2,"West Delhi's retail strip, on the Outer Ring Road."],
+["Netaji Subhash Place",28.6940,77.1520,"hub","",3,"Office and wholesale district in north-west Delhi."],
+["Anand Vihar",28.6470,77.3160,"hub","",1,"ISBT, railway terminal and metro interchange at the Ghaziabad edge."],
+["Lodhi Road",28.5880,77.2240,"hub","",3,"Gardens, institutes and the Ring Road's southern stretch through Lutyens Delhi."],
+["Okhla",28.5350,77.2720,"hub","",3,"Industrial estate and the Yamuna barrage at the south-east corner."],
+
+/* neighbourhoods */
+["Rohini",28.7380,77.1050,"area","",2,"Large planned sub-city in the north-west, beyond the Outer Ring Road."],
+["Pitampura",28.6990,77.1320,"area","",3,"Residential district just inside the Outer Ring Road's north-west arc."],
+["Shalimar Bagh",28.7170,77.1570,"area","",3,"North Delhi colony between Azadpur and Rohini."],
+["Model Town",28.7120,77.1930,"area","",3,"Older north Delhi colony above the Ring Road."],
+["Civil Lines",28.6800,77.2230,"area","",3,"The colonial-era north, with the old Secretariat and university nearby."],
+["Ashok Vihar",28.6960,77.1770,"area","",3,"Residential grid between Azadpur and NSP."],
+["Paschim Vihar",28.6680,77.1000,"area","",3,"West Delhi colony off the Rohtak Road."],
+["Janakpuri",28.6210,77.0870,"area","",2,"Dense west Delhi sub-city, outside the Outer Ring Road."],
+["Vikaspuri",28.6350,77.0700,"area","",3,"West Delhi residential belt towards the Najafgarh drain."],
+["Tilak Nagar",28.6400,77.0950,"area","",3,"West Delhi market and residential area off Najafgarh Road."],
+["Dwarka",28.5920,77.0460,"area","",1,"Planned sub-city near the airport, linked by the Dwarka Expressway to Gurugram."],
+["Palam",28.5880,77.0850,"area","",3,"Older settlement beside the airport's domestic terminal."],
+["Vasant Vihar",28.5600,77.1600,"area","",3,"Diplomatic and residential enclave inside the Outer Ring Road."],
+["Vasant Kunj",28.5200,77.1570,"area","",2,"South Delhi colony against the ridge forest, with three malls on its edge."],
+["Mehrauli",28.5245,77.1855,"area","",2,"The oldest continuously settled part of Delhi, around the Qutub complex."],
+["Greater Kailash",28.5480,77.2420,"area","",2,"South Delhi market colonies, M and N blocks, inside the Outer Ring Road."],
+["Kalkaji",28.5450,77.2580,"area","",3,"Temple and residential area beside Nehru Place."],
+["Jasola",28.5400,77.2930,"area","",3,"Offices and apartments at the Outer Ring Road's south-east turn."],
+["Kalindi Kunj",28.5370,77.3030,"area","",3,"Yamuna crossing to Noida at the southern tip of the river in Delhi."],
+["Badarpur",28.5000,77.3030,"area","",3,"Southern gateway on the Mathura Road towards Faridabad."],
+["Laxmi Nagar",28.6350,77.2770,"area","",2,"Trans-Yamuna commercial and coaching hub."],
+["Preet Vihar",28.6410,77.2940,"area","",3,"East Delhi residential district near Anand Vihar."],
+["Yamuna Vihar",28.6900,77.2750,"area","",3,"North-east Delhi colony on the far bank."],
+["Jahangirpuri",28.7290,77.1650,"area","",3,"North Delhi resettlement colony beyond the Outer Ring Road."],
+["Burari",28.7470,77.2000,"area","",3,"Fast-growing northern fringe towards the Wazirabad floodplain."],
+["Najafgarh",28.6090,76.9800,"area","",3,"South-west Delhi's largest town, out past Dwarka."],
+
+/* mandis, markets and depots */
+["Ghazipur Mandi",28.6250,77.3270,"mandi","Outer Ring Road",1,"Fruit, vegetable, fish and poultry mandis together at the NH-9 interchange on the Outer Ring Road."],
+["Okhla Mandi",28.5430,77.2810,"mandi","",2,"Wholesale vegetable market in Okhla, between Jasola and the Yamuna barrage."],
+["INA Mandi",28.5745,77.2090,"mandi","Ring Road",2,"INA Market on Aurobindo Marg, just inside the Ring Road. Retail rather than wholesale, known for regional produce."],
+["Keshopur Mandi",28.6370,77.0860,"mandi","",2,"West Delhi's wholesale vegetable mandi, near Janakpuri outside the Outer Ring Road."],
+["Bhajanpura Mandi",28.6990,77.2660,"mandi","",3,"Vegetable mandi serving north-east Delhi, on the far bank of the Yamuna."],
+["Gokalpuri Mandi",28.7020,77.2820,"mandi","",2,"Vegetable mandi in north-east Delhi, east of Bhajanpura along the Wazirabad Road."],
+["Sunder Nagari Mandi",28.6890,77.3110,"mandi","",2,"Mandi in the Sunder Nagari industrial pocket, between Nand Nagri and Dilshad Garden."],
+["Mother Dairy Plant",28.6210,77.3050,"mandi","",2,"The Patparganj milk plant, source of the booth network across the city."],
+["Sadar Bazar",28.6610,77.2140,"mandi","",2,"Delhi's largest wholesale market for general goods, inside the Ring Road north of Connaught Place."],
+
+/* EV charging points named by respondents, clustered where the Ring Road passes north Delhi */
+["Azadpur EV",28.7085,77.1800,"ev","Ring Road",1,"Charging point at Azadpur, on the Ring Road beside the mandi."],
+["Chhatrasal Stadium EV",28.7116,77.1917,"ev","Ring Road",1,"Charging point at Chhatrasal Stadium, where the Ring Road runs past Model Town."],
+["Model Town EV",28.7175,77.1885,"ev","Ring Road",2,"Charging point at Model Town, just north of the Ring Road."],
+["Kingsway Camp EV",28.7050,77.2060,"ev","Ring Road",2,"Charging point at Kingsway Camp, on the Ring Road's north-east stretch towards Civil Lines."],
+
+/* railway stations and interstate bus terminals */
+["IGI Airport T3",28.5562,77.0999,"transit","",1,"The international terminal, reached from the Outer Ring Road by NH-48 and the airport spur, or from Dwarka by the expressway."],
+["Kashmere Gate ISBT",28.6672,77.2318,"transit","Ring Road",1,"The busiest interstate bus terminal in Delhi, on the inner Ring Road. Buses for Uttarakhand, Himachal, Punjab and Haryana."],
+["Old Delhi Rly Stn",28.6610,77.2270,"transit","",1,"Delhi Junction, the oldest station in the city, beside Chandni Chowk inside the Ring Road."],
+["Delhi Cantt Rly Stn",28.5830,77.1370,"transit","",2,"South-west Delhi station near Dhaula Kuan, on the Rewari and Jaipur lines."],
+["Sarai Kale Khan ISBT",28.5895,77.2605,"transit","Ring Road",1,"Bus terminal on the Ring Road, beside Nizamuddin station and the RapidX terminal for Meerut."],
+["H. Nizamuddin Rly Stn",28.5885,77.2510,"transit","",1,"Major terminal for southbound and western trains, just inside the Ring Road."],
+["Anand Vihar ISBT",28.6465,77.3150,"transit","",1,"Eastern bus terminal for Uttar Pradesh and Uttarakhand, at the Ghaziabad edge."],
+["Anand Vihar Rly Stn",28.6505,77.3165,"transit","",2,"Terminal station next to the ISBT, with the metro interchange between them."],
+
+/* further neighbourhoods */
+["CRP Camp",28.7300,77.2760,"area","",2,"Entry point on the Dehradun expressway corridor, where LCVs come off towards Khajuri."],
+["Khajuri Khas",28.7180,77.2720,"area","",2,"North-east Delhi locality on the LCV route in from the Dehradun expressway, above Bhajanpura."],
+["Majlis Park",28.7190,77.1740,"area","",3,"North Delhi locality beside Azadpur, and the western terminal of the metro's Pink Line."],
+["Shakti Nagar",28.6790,77.1950,"area","",3,"Older north Delhi colony next to Kamla Nagar and the university area."],
+["Bhajanpura",28.6980,77.2670,"area","",3,"Dense north-east Delhi locality on the Wazirabad Road, inside the Outer Ring Road's east arc."],
+["Nangloi",28.6830,77.0620,"area","",3,"West Delhi town on the Rohtak Road, outside the Outer Ring Road towards Bahadurgarh."],
+
+/* NCR cities at the rim */
+["Gurugram",28.4595,77.0266,"edge","",1,"Reached from Dhaula Kuan by NH-48 or from Dwarka by the Dwarka Expressway."],
+["Noida",28.5355,77.3910,"edge","",1,"Across the Yamuna by the DND Flyway or the Noida Link Road."],
+["Ghaziabad",28.6692,77.4538,"edge","",1,"East on NH-9 past Ghazipur, or by the Delhi to Meerut expressway."],
+["Faridabad",28.4089,77.3178,"edge","",1,"South on the Mathura Road past Badarpur."]
+];
+
+/* the names called out for emphasis on the ring road sheet */
+var FOCUS={"Okhla Mandi":1,"INA Mandi":1,"Ghazipur Mandi":1,"Mother Dairy Plant":1,
+  "Bhajanpura Mandi":1,"Majlis Park":1,"Sadar Bazar":1,"Keshopur Mandi":1,
+  "Shakti Nagar":1,"Azadpur Mandi":1,"Bhajanpura":1,"Nangloi":1,
+  "Gokalpuri Mandi":1,"Sunder Nagari Mandi":1,
+  "Kashmere Gate ISBT":1,"Old Delhi Rly Stn":1,"Delhi Cantt Rly Stn":1,"Sarai Kale Khan ISBT":1,
+  "H. Nizamuddin Rly Stn":1,"Anand Vihar ISBT":1,"Anand Vihar Rly Stn":1,
+  "Azadpur EV":1,"Chhatrasal Stadium EV":1,"Model Town EV":1,"Kingsway Camp EV":1,
+  "IGI Airport T3":1,"CRP Camp":1,"Khajuri Khas":1,"Dhaula Kuan":1,"Akshardham":1};
+
+/* ---------------- build records ---------------- */
+function build(rows,S,bands,O){
+  return rows.map(function(r,i){
+    var d=dist(r[1],r[2],O), b=bear(r[1],r[2],O), p=proj(r[1],r[2],S,O), band=bands[bands.length-1][0];
+    for(var j=0;j<bands.length;j++){ if(d<=bands[j][0]){band=bands[j][0];break;} }
+    return {id:i,name:r[0],lat:r[1],lon:r[2],cat:r[3],meta:r[4],rank:r[5],note:r[6],focus:!!FOCUS[r[0]],
+            d:d,b:b,dir:card(b),x:p.x,y:p.y,band:band};
+  }).sort(function(a,b){return a.d-b.d;});
+}
+var BANDS_R=[[50,"Within 50 km"],[100,"50 to 100 km"],[150,"100 to 150 km"],[200,"150 to 200 km"]];
+var BANDS_D=[[5,"Within 5 km"],[10,"5 to 10 km"],[20,"10 to 20 km"],[38,"Beyond 20 km"]];
+
+var VIEWS={
+  region:{S:S_R,extent:200,places:build(P_REGION,S_R,BANDS_R),bands:BANDS_R,cats:["ncr","town"],
+          steps:[[50,"0–50"],[100,"0–100"],[150,"0–150"],[200,"0–200"]],max:200,unit:"km",
+          origin:"Connaught Place",originShort:"From CP",centreName:"DELHI",
+          scaleLabel:"200&nbsp;km",sub:"Cities, towns and NCR districts inside a 200 km circle.",
+          search:"Search a town, district or state",dec:0},
+  delhi:{S:S_D,extent:38,places:build(P_DELHI,S_D,BANDS_D,AZ),bands:BANDS_D,cats:["node","mandi","transit","ev","hub","area","edge"],
+          steps:[[5,"0–5"],[10,"0–10"],[20,"0–20"],[38,"All"]],max:38,unit:"km",
+          origin:"Azadpur Mandi",originShort:"From Azadpur",centreName:"AZADPUR MANDI",
+          scaleLabel:"from&nbsp;Azadpur",sub:"The ring roads and the city, measured out from Azadpur Mandi.",
+          search:"Search a junction or neighbourhood",dec:1}
+};
+
+/* ---------------- base map ---------------- */
+function el(tag,attrs,txt){var e=document.createElementNS("http://www.w3.org/2000/svg",tag);
+  for(var k in attrs) e.setAttribute(k,attrs[k]); if(txt!=null) e.textContent=txt; return e;}
+function rings(g,S,extent,list,major,bearingDeg,fmt){
+  list.forEach(function(r){
+    g.appendChild(el("circle",{cx:CX,cy:CY,r:r[0]*S,"class":"ring"+(r[0]===major?" major":r[1]?" faint":"")}));});
+  for(var a=0;a<360;a+=45){var rad=a*D2R;
+    g.appendChild(el("line",{x1:CX,y1:CY,x2:CX+Math.sin(rad)*extent*S,y2:CY-Math.cos(rad)*extent*S,"class":"spoke"}));}
+  list.forEach(function(r){ if(r[1]) return;
+    var rad=bearingDeg*D2R, x=CX+Math.sin(rad)*r[0]*S, y=CY-Math.cos(rad)*r[0]*S;
+    g.appendChild(el("text",{x:x+4,y:y-3,"class":"ringlab"},fmt(r[0])));});
+  [["N",0],["NE",45],["E",90],["SE",135],["S",180],["SW",225],["W",270],["NW",315]].forEach(function(c){
+    var rad=c[1]*D2R, x=CX+Math.sin(rad)*(extent*1.055)*S, y=CY-Math.cos(rad)*(extent*1.055)*S;
+    g.appendChild(el("text",{x:x,y:y+4,"class":"compass","text-anchor":"middle"},c[0]));});
+}
+
+/* --- region sheet --- */
+rings(document.getElementById("g-rings"),S_R,200,
+  [[25,1],[50,0],[75,1],[100,0],[125,1],[150,0],[175,1],[200,0]],200,22,function(v){return v+" km";});
+
+/* highway names sit at the outer end of each route, set along the road */
+function roadLabel(g,c,S,name,O,exp){
+  var a=proj(c[c.length-2][0],c[c.length-2][1],S,O), b=proj(c[c.length-1][0],c[c.length-1][1],S,O);
+  var ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI, flip=(ang>90||ang<-90);
+  if(flip) ang+=180;
+  var x=b.x+(a.x-b.x)*0.03, y=b.y+(a.y-b.y)*0.03;
+  g.appendChild(el("text",{x:x,y:y-4,"class":"roadlab"+(exp?" exp":""),"text-anchor":flip?"start":"end",
+    transform:"rotate("+ang.toFixed(1)+" "+x+" "+y+")"},name));
+}
+
+var gRd=document.getElementById("g-roads");
+var ROADS=[
+ {n:"NH-44",c:[[28.61,77.21],[28.99,77.02],[29.39,76.96],[29.69,76.99],[29.97,76.88],[30.38,76.78]],lab:[29.55,76.87],rot:-72},
+ {n:"Yamuna Expwy",c:[[28.47,77.50],[28.17,77.60],[27.75,77.65],[27.49,77.67],[27.22,77.98]],exp:1,lab:[27.92,77.71],rot:80},
+ {n:"NH-19",c:[[28.61,77.21],[28.41,77.32],[28.14,77.33],[27.70,77.55],[27.49,77.67],[27.18,78.01]],lab:[28.26,77.37],rot:72},
+ {n:"NH-48",c:[[28.61,77.21],[28.46,77.03],[28.35,76.94],[28.20,76.80],[27.89,76.28],[27.70,76.08]],lab:[28.06,76.56],rot:56},
+ {n:"NH-9",c:[[28.61,77.21],[28.67,77.45],[28.73,77.78],[28.84,78.40],[28.84,78.77],[28.80,79.02]],exp:1,lab:[28.80,78.22],rot:-6},
+ {n:"Delhi–Dehradun",c:[[28.61,77.21],[28.94,77.22],[29.45,77.31],[29.96,77.55],[30.25,77.90]],exp:1,lab:[29.72,77.42],rot:-28},
+ {n:"Delhi–Meerut",c:[[28.61,77.21],[28.67,77.45],[28.98,77.71]],exp:1,lab:[28.87,77.63],rot:-42},
+ {n:"NH-334",c:[[28.98,77.71],[29.47,77.71],[29.85,77.89],[29.95,78.17]],lab:[29.30,77.75],rot:-85},
+ {n:"Western Peripheral (KMP)",c:[[29.00,77.08],[28.78,76.93],[28.52,76.85],[28.35,76.94],[28.22,77.12],[28.14,77.33]],lab:[28.44,76.79],rot:-68},
+ {n:"Eastern Peripheral",c:[[29.00,77.08],[28.96,77.33],[28.78,77.57],[28.52,77.62],[28.28,77.50],[28.14,77.33]],lab:[28.76,77.64],rot:78}
+];
+ROADS.forEach(function(r){
+  var dd=path(r.c,S_R);
+  gRd.appendChild(el("path",{d:dd,"class":"road case"+(r.exp?" exp":"")}));
+  gRd.appendChild(el("path",{d:dd,"class":"road"+(r.exp?" exp":"")}));
+  roadLabel(gRd,r.c,S_R,r.n,null,r.exp);
+});
+
+var RING_ROAD=[[28.6670,77.2280],[28.6410,77.2490],[28.6000,77.2600],[28.5720,77.2600],[28.5670,77.2380],[28.5670,77.2070],[28.5930,77.1610],[28.6280,77.1410],[28.6690,77.1330],[28.7070,77.1760],[28.6670,77.2280]];
+var OUTER_RING=[[28.7140,77.1620],[28.6960,77.1180],[28.6810,77.0850],[28.6500,77.1200],[28.6310,77.1360],[28.5930,77.1610],[28.5460,77.1850],[28.5370,77.2230],[28.5490,77.2520],[28.5450,77.2930],[28.6060,77.3020],[28.6270,77.3180],[28.6900,77.2950],[28.7220,77.2330],[28.7140,77.1620]];
+var UER2=[[28.8050,77.1300],[28.7900,77.0350],[28.6800,77.0000],[28.6050,76.9850],[28.5550,77.0250],[28.5200,77.1000]];
+
+var gRR=document.getElementById("g-ringroads");
+[{n:"Ring Road",c:RING_ROAD,lab:[28.6150,77.1430],rot:-84},
+ {n:"Outer Ring Road",c:OUTER_RING,lab:[28.5320,77.2050],rot:0},
+ {n:"UER-II",c:UER2,dash:1,lab:[28.7050,76.9800],rot:-72}].forEach(function(r){
+  gRR.appendChild(el("path",{d:path(r.c,S_R),"class":"rring"+(r.dash?" dash":"")}));
+  var q=proj(r.lab[0],r.lab[1],S_R);
+  gRR.appendChild(el("text",{x:q.x,y:q.y,"class":"rringlab","text-anchor":"middle",transform:"rotate("+r.rot+" "+q.x+" "+q.y+")"},r.n));
+});
+
+var gS=document.getElementById("g-states");
+[["Haryana",29.30,76.45],["Uttar Pradesh",28.22,78.38],["Rajasthan",27.35,76.05],
+ ["Uttarakhand",29.95,78.60],["Punjab",30.15,76.25]].forEach(function(s){
+  var p=proj(s[1],s[2],S_R);
+  if(Math.hypot(p.x-CX,p.y-CY)<200*S_R-10) gS.appendChild(el("text",{x:p.x,y:p.y,"class":"statelab","text-anchor":"middle"},s[0]));
+});
+
+/* --- ring road sheet --- */
+rings(document.getElementById("d-rings"),S_D,38,
+  [[5,0],[10,0],[15,1],[20,0],[25,1],[30,0],[35,1]],null,20,function(v){return v+" km";});
+
+var dRiv=document.getElementById("d-river");
+var YAMUNA_CITY=[[28.78,77.215],[28.745,77.228],[28.700,77.240],[28.655,77.248],[28.615,77.258],[28.575,77.272],[28.545,77.295],[28.515,77.315],[28.480,77.330]];
+dRiv.appendChild(el("path",{d:path(YAMUNA_CITY,S_D,AZ),"class":"river"}));
+
+/* national highways radiating out of the city */
+var dRd=document.getElementById("d-roads");
+[{n:"NH-44 → Sonipat",c:[[28.6670,77.2280],[28.7070,77.1760],[28.7140,77.1620],[28.7700,77.1400],[28.8250,77.1280]],lab:[28.795,77.122],rot:-70},
+ {n:"NH-9 → Rohtak",c:[[28.6690,77.1330],[28.6810,77.0850],[28.6830,77.0620],[28.6880,77.0100],[28.6900,76.9400]],lab:[28.690,77.002],rot:-4},
+ {n:"NH-9 → Hapur",c:[[28.6127,77.2773],[28.6270,77.3180],[28.6400,77.3800],[28.6460,77.4500]],lab:[28.643,77.408],rot:-8},
+ {n:"Delhi–Gurgaon Expwy (NH-48)",c:[[28.5930,77.1610],[28.5560,77.1100],[28.5230,77.0750],[28.4850,77.0380],[28.4500,77.0100]],exp:1},
+ {n:"NH-19 → Faridabad",c:[[28.5720,77.2600],[28.5300,77.2900],[28.5000,77.3030],[28.4450,77.3130]],lab:[28.478,77.312],rot:8},
+ {n:"Delhi–Meerut Expwy",c:[[28.6127,77.2773],[28.6350,77.3400],[28.6680,77.4150]],exp:1},
+ {n:"Delhi–Dehradun Expwy",c:[[28.6127,77.2773],[28.6600,77.2900],[28.7100,77.2860],[28.7750,77.2700],[28.8500,77.2550],[28.9200,77.2330]],exp:1},
+ {n:"Dwarka Expwy",c:[[28.5490,77.1200],[28.5530,77.0600],[28.5200,77.0280],[28.4700,77.0000],[28.4150,76.9700]],exp:1}
+].forEach(function(r){
+  var dd=path(r.c,S_D,AZ);
+  dRd.appendChild(el("path",{d:dd,"class":"road case"+(r.exp?" exp":"")}));
+  dRd.appendChild(el("path",{d:dd,"class":"road"+(r.exp?" exp":"")}));
+  roadLabel(dRd,r.c,S_D,r.n,AZ,r.exp);
+});
+
+/* how light commercial vehicles come into the city off each expressway */
+var dLcv=document.getElementById("d-lcv");
+[{n:"Dehradun Expwy → Akshardham",lab:[28.7450,77.2880],rot:-78,
+  c:[[28.9200,77.2330],[28.8500,77.2550],[28.7750,77.2700],[28.7300,77.2760],[28.7180,77.2720],[28.6980,77.2670],[28.6600,77.2820],[28.6127,77.2773]]},
+ {n:"Gurgaon Expwy → Dhaula Kuan",lab:[28.5050,77.0530],rot:46,
+  c:[[28.4500,77.0100],[28.4850,77.0380],[28.5230,77.0750],[28.5560,77.1100],[28.5930,77.1610]]},
+ {n:"Dwarka Expwy → Najafgarh Rd → Alipur Rd",lab:[28.6270,77.0700],rot:-14,
+  c:[[28.4150,76.9700],[28.4700,77.0000],[28.5200,77.0280],[28.5530,77.0600],[28.6150,77.0620],[28.6210,77.0870],[28.6400,77.0950],[28.6550,77.1230],[28.6690,77.1330],[28.7070,77.1760],[28.7300,77.1740]]}
+].forEach(function(r){
+  dLcv.appendChild(el("path",{d:path(r.c,S_D,AZ),"class":"lcv"}));
+  var half=r.c.slice(0,Math.ceil(r.c.length/2)+1);
+  dLcv.appendChild(el("path",{d:path(half,S_D,AZ),"class":"lcvline"}));
+  dLcv.appendChild(el("path",{d:path(r.c,S_D,AZ),"class":"lcvline"}));
+  var q=proj(r.lab[0],r.lab[1],S_D,AZ);
+  dLcv.appendChild(el("text",{x:q.x,y:q.y,"class":"lcvlab","text-anchor":"middle",
+    transform:"rotate("+r.rot+" "+q.x+" "+q.y+")"},r.n));
+});
+
+var dRR=document.getElementById("d-ringroads");
+[{n:"Ring Road",c:RING_ROAD,lab:[28.6200,77.1280],rot:-80},
+ {n:"Outer Ring Road",c:OUTER_RING,lab:[28.5150,77.2300],rot:-6},
+ {n:"UER-II",c:UER2,dash:1,lab:[28.7150,76.9550],rot:-74}].forEach(function(r){
+  dRR.appendChild(el("path",{d:path(r.c,S_D,AZ),"class":"rring big"+(r.dash?" dash":"")}));
+});
+
+/* ---------------- markers ---------------- */
+var layer=document.getElementById("layer"), wrap=document.getElementById("mapwrap"), zoomG=document.getElementById("zoom");
+var hub=document.createElement("div");
+hub.className="hub"; hub.innerHTML='<div class="dot"></div><div class="nm">DELHI</div>';
+hub.tabIndex=0; layer.appendChild(hub);
+
+var NODES={};
+Object.keys(VIEWS).forEach(function(v){
+  NODES[v]=VIEWS[v].places.map(function(pl){
+    var b=document.createElement("button");
+    b.className="mk hide"; b.type="button"; b.innerHTML=glyph(pl.cat);
+    b.title=pl.name+" · "+pl.d.toFixed(VIEWS[v].dec)+" km "+pl.dir;
+    b.setAttribute("aria-label",b.title);
+    b.addEventListener("click",function(e){e.stopPropagation();select(pl.id);});
+    b.addEventListener("mouseenter",function(){hover=pl.id;place();});
+    b.addEventListener("mouseleave",function(){hover=null;place();});
+    layer.appendChild(b);
+    var l=document.createElement("div"); l.className="lab dim"; l.textContent=pl.name; layer.appendChild(l);
+    return {b:b,l:l,p:pl};
+  });
+});
+
+/* ---------------- state ---------------- */
+var MODE="region", V=VIEWS[MODE], nodes=NODES[MODE];
+var k=1,tx=0,ty=0,sel=null,hover=null,labelsOn=true,focusOn=true;
+var active={}, ringMax=200, query="";
+
+function applyT(){zoomG.setAttribute("transform","translate("+tx+" "+ty+") scale("+k+")");place();}
+function clamp(){var lim=520*(k-1)/k; if(lim<0)lim=0;
+  tx=Math.max(-lim*k,Math.min(lim*k,tx)); ty=Math.max(-lim*k,Math.min(lim*k,ty));}
+
+function place(){
+  var m=zoomG.getScreenCTM(); if(!m) return;
+  var cr=wrap.getBoundingClientRect();
+  function P(x,y){return {x:m.a*x+m.c*y+m.e-cr.left, y:m.b*x+m.d*y+m.f-cr.top};}
+  var h=P(CX,CY); hub.style.left=h.x+"px"; hub.style.top=h.y+"px";
+  hub.classList.toggle("sm",k>2.2&&MODE!=="delhi");
+  gRR.setAttribute("data-z",k<2.1?"far":"near");
+
+  var boxes=[], dimRest = focusOn && MODE==="delhi";
+  var vis=nodes.filter(function(n){return !n.b.classList.contains("dim");});
+  function pri(p){return p.id===sel?0 : p.id===hover?1 : (dimRest&&p.focus?2:p.rank+3);}
+  var ord=vis.slice().sort(function(a,b){return pri(a.p)-pri(b.p) || a.p.d-b.p.d;});
+
+  nodes.forEach(function(n){
+    var q=P(n.p.x,n.p.y);
+    n.sx=q.x; n.sy=q.y;
+    n.b.style.left=q.x+"px"; n.b.style.top=q.y+"px";
+    n.b.classList.toggle("soft",dimRest&&!n.p.focus);
+    n.b.classList.toggle("star",dimRest&&n.p.focus);
+    n.on=q.x>-40&&q.x<cr.width+40&&q.y>-30&&q.y<cr.height+30;
+    n.b.style.visibility=n.on?"visible":"hidden";
+  });
+
+  ord.forEach(function(n){
+    var isHi=(n.p.id===sel||n.p.id===hover);
+    var starred = dimRest && n.p.focus;
+    n.l.className="lab"+(isHi?" hi":starred?" star":dimRest?" soft":"");
+    if(!labelsOn&&!isHi){n.l.classList.add("dim");return;}
+    if(!n.on){n.l.classList.add("dim");return;}
+    var gate = k<1.3?2 : 3;
+    if(!isHi && !starred && n.p.rank>gate){n.l.classList.add("dim");return;}
+    var w=n.p.name.length*(starred?7.9:7.4)+11, hgt=18, off=starred?17:12;
+    var x=n.sx+off, y=n.sy-9;
+    var box={x:x,y:y,w:w,h:hgt}, ok=fits(box,boxes);
+    if(!ok){box={x:n.sx-off-w,y:y,w:w,h:hgt}; ok=fits(box,boxes); if(ok)x=box.x;}
+    if(!ok){box={x:n.sx-w/2,y:n.sy+off,w:w,h:hgt}; ok=fits(box,boxes); if(ok){x=box.x;y=box.y;}}
+    if(!ok){box={x:n.sx-w/2,y:n.sy-off-hgt,w:w,h:hgt}; ok=fits(box,boxes); if(ok){x=box.x;y=box.y;}}
+    if(!ok&&!isHi&&!starred){n.l.classList.add("dim");return;}
+    boxes.push(box);
+    n.l.style.left=x+"px"; n.l.style.top=y+"px";
+  });
+
+  function fits(b,list){
+    if(b.x<2||b.y<2||b.x+b.w>cr.width-2||b.y+b.h>cr.height-2) return false;
+    var pad = MODE==="delhi"?34:48;
+    if(Math.abs(b.x+b.w/2-h.x)<pad&&Math.abs(b.y+b.h/2-h.y)<26) return false;
+    for(var i=0;i<list.length;i++){var o=list[i];
+      if(b.x<o.x+o.w&&b.x+b.w>o.x&&b.y<o.y+o.h&&b.y+b.h>o.y) return false;}
+    return true;
+  }
+
+  var pxPerKm=Math.abs(m.a)*V.S, want=[1,2,5,10,25,50,100,200], pick=want[0];
+  for(var i=0;i<want.length;i++){ if(want[i]*pxPerKm<=120) pick=want[i]; }
+  document.getElementById("scaletxt").textContent=pick+" km";
+  document.getElementById("scalebar").style.width=Math.round(pick*pxPerKm)+"px";
+}
+
+/* pan + zoom */
+var drag=null;
+wrap.addEventListener("pointerdown",function(e){
+  if(e.target.closest(".chrome")) return;
+  drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty,moved:0};
+  wrap.classList.add("drag"); wrap.setPointerCapture(e.pointerId);});
+wrap.addEventListener("pointermove",function(e){
+  if(!drag) return;
+  var dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+  drag.moved=Math.max(drag.moved,Math.abs(dx)+Math.abs(dy));
+  var cr=wrap.getBoundingClientRect(), s=Math.min(cr.width,cr.height)/1000;
+  tx=drag.tx+dx/s; ty=drag.ty+dy/s; clamp(); applyT();});
+["pointerup","pointercancel"].forEach(function(ev){wrap.addEventListener(ev,function(e){
+  if(drag&&drag.moved<4&&!e.target.closest(".mk")&&!e.target.closest(".hub")) select(null);
+  drag=null; wrap.classList.remove("drag");});});
+wrap.addEventListener("wheel",function(e){
+  e.preventDefault();
+  var cr=wrap.getBoundingClientRect(), s=Math.min(cr.width,cr.height)/1000;
+  var mx=(e.clientX-cr.left-(cr.width-1000*s)/2)/s, my=(e.clientY-cr.top-(cr.height-1000*s)/2)/s;
+  var nk=Math.max(1,Math.min(7,k*(e.deltaY<0?1.14:1/1.14)));
+  tx=mx-(mx-tx)*(nk/k); ty=my-(my-ty)*(nk/k); k=nk; clamp(); applyT();
+},{passive:false});
+function zoomBy(f){var nk=Math.max(1,Math.min(7,k*f));
+  tx=500-(500-tx)*(nk/k); ty=500-(500-ty)*(nk/k); k=nk; clamp(); applyT();}
+document.getElementById("zin").onclick=function(){zoomBy(1.4);};
+document.getElementById("zout").onclick=function(){zoomBy(1/1.4);};
+document.getElementById("zreset").onclick=function(){k=1;tx=0;ty=0;applyT();};
+
+var pts={}, pinch=null;
+wrap.addEventListener("pointerdown",function(e){pts[e.pointerId]=e;});
+wrap.addEventListener("pointermove",function(e){
+  if(!(e.pointerId in pts)) return; pts[e.pointerId]=e;
+  var ids=Object.keys(pts); if(ids.length!==2) return;
+  var a=pts[ids[0]],b=pts[ids[1]], d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  if(pinch){ zoomBy(d/pinch); } pinch=d; drag=null;});
+["pointerup","pointercancel"].forEach(function(ev){wrap.addEventListener(ev,function(e){delete pts[e.pointerId];pinch=null;});});
+
+/* ---------------- filters ---------------- */
+var chips=document.getElementById("chips"), rr=document.getElementById("ringrow"), list=document.getElementById("list");
+
+function buildControls(){
+  chips.innerHTML="";
+  V.cats.forEach(function(c){
+    var n=V.places.filter(function(p){return p.cat===c;}).length;
+    var b=document.createElement("button");
+    b.className="chip"+(active[c]?" on":" off");
+    b.innerHTML=glyph(c).replace('class="glyph"','width="14" height="14"')+'<span>'+CATS[c].label+'</span><span class="n">'+n+'</span>';
+    b.onclick=function(){active[c]=!active[c]; b.classList.toggle("on",active[c]); b.classList.toggle("off",!active[c]); render();};
+    chips.appendChild(b);
+  });
+  rr.innerHTML="";
+  V.steps.forEach(function(r){
+    var b=document.createElement("button"); b.textContent=r[1]+(r[1]==="All"?"":" km");
+    if(r[0]===ringMax)b.classList.add("on");
+    b.onclick=function(){ringMax=r[0];[].forEach.call(rr.children,function(c){c.classList.toggle("on",c===b);});render();};
+    rr.appendChild(b);
+  });
+  document.getElementById("q").placeholder=V.search;
+  document.getElementById("h1scale").innerHTML=V.scaleLabel;
+  hub.classList.toggle("az",MODE==="delhi");
+  hub.querySelector(".nm").textContent=V.centreName;
+  document.getElementById("subtitle").textContent=V.sub;
+  document.getElementById("l-states").parentNode.style.display = MODE==="region"?"":"none";
+  document.getElementById("l-focus").parentNode.style.display = MODE==="delhi"?"":"none";
+  document.getElementById("l-lcv").parentNode.style.display = MODE==="delhi"?"":"none";
+}
+
+document.getElementById("q").addEventListener("input",function(e){query=e.target.value.trim().toLowerCase();render();});
+
+var LAYERS={"l-rings":["g-rings","d-rings"],"l-roads":["g-roads","d-roads"],
+            "l-ringroads":["g-ringroads","d-ringroads"],"l-states":["g-states"],"l-lcv":["d-lcv"]};
+Object.keys(LAYERS).forEach(function(id){
+  document.getElementById(id).addEventListener("change",function(e){
+    LAYERS[id].forEach(function(g){document.getElementById(g).classList.toggle("lyr-off",!e.target.checked);});});
+});
+document.getElementById("l-labels").addEventListener("change",function(e){labelsOn=e.target.checked;place();});
+document.getElementById("l-focus").addEventListener("change",function(e){focusOn=e.target.checked;place();});
+
+function match(p){
+  if(!active[p.cat]) return false;
+  if(p.d>ringMax+1) return false;
+  if(query){
+    var hay=(p.name+" "+p.meta+" "+CATS[p.cat].label+" "+p.note).toLowerCase();
+    if(hay.indexOf(query)<0) return false;
+  }
+  return true;
+}
+
+function render(){
+  var vis=V.places.filter(match);
+  nodes.forEach(function(n){n.b.classList.toggle("dim",!match(n.p));});
+  list.innerHTML="";
+  if(!vis.length){list.innerHTML='<div class="empty">Nothing matches that. Try clearing the search or widening the ring.</div>';place();return;}
+  V.bands.forEach(function(bd){
+    var grp=vis.filter(function(p){return p.band===bd[0];});
+    if(!grp.length) return;
+    var h=document.createElement("div"); h.className="grp"; h.textContent=bd[1]+"  ·  "+grp.length; list.appendChild(h);
+    grp.forEach(function(p){
+      var r=document.createElement("button");
+      r.className="row"+(sel===p.id?" sel":""); r.type="button"; r.dataset.id=p.id;
+      r.innerHTML=glyph(p.cat).replace('class="glyph"','width="14" height="14"')+
+        '<span class="nm">'+p.name+(p.meta?'<small>'+p.meta+'</small>':'')+'</span>'+
+        '<span class="km"><b>'+p.d.toFixed(V.dec)+'</b> km '+p.dir+'</span>';
+      r.onclick=function(){select(p.id);};
+      list.appendChild(r);
+    });
+  });
+  place();
+}
+
+/* ---------------- selection ---------------- */
+var gSel=document.getElementById("g-sel"), detail=document.getElementById("detail");
+hub.addEventListener("click",function(e){e.stopPropagation();select("hub");});
+
+function select(id){
+  sel=id;
+  gSel.innerHTML="";
+  nodes.forEach(function(n){n.b.classList.toggle("sel",n.p.id===id);});
+  [].forEach.call(list.querySelectorAll(".row"),function(r){r.classList.toggle("sel",+r.dataset.id===id);});
+
+  if(id===null){ detail.innerHTML=intro(); place(); return; }
+  if(id==="hub"){
+    detail.innerHTML = MODE==="delhi"
+      ? '<div class="kicker">Vantage point'+closeBtn()+'</div><h2>Azadpur Mandi</h2>'+
+        '<p>Asia\'s largest wholesale fruit and vegetable market, sitting on the Ring Road at its northern corner. Prices set here move through the whole region.</p>'+
+        '<p>This sheet is drawn outward from the mandi. Every ring and every distance in the list is measured from this point, in a straight line. Road distance runs roughly 15 to 30 per cent longer.</p>'
+      : '<div class="kicker">The centre'+closeBtn()+'</div><h2>Connaught Place</h2>'+
+        '<p>Distances on the region sheet are measured from here in a straight line. Road distance runs roughly 15 to 30 per cent longer.</p>'+
+        '<p>Four loops surround the city. The Ring Road sits about 5 km out, the Outer Ring Road 8 to 12 km, UER-II runs wide to the west, and the Western and Eastern Peripheral expressways close a fourth ring at 50 to 60 km.</p>';
+    bindClose(); place(); return;
+  }
+
+  var p=null; for(var i=0;i<V.places.length;i++){ if(V.places[i].id===id){p=V.places[i];break;} }
+  if(!p) return;
+  gSel.appendChild(el("line",{x1:CX,y1:CY,x2:p.x,y2:p.y,"class":"hairline"}));
+  gSel.appendChild(el("circle",{cx:p.x,cy:p.y,r:9,fill:"none",stroke:"var(--accent)","stroke-width":1.3,"stroke-opacity":.85}));
+
+  var third = MODE==="delhi"
+    ? '<div class="fact"><dt>On</dt><dd class="'+(p.meta?"ring":"")+'">'+(p.meta||"Off the loops")+'</dd></div>'
+    : '<div class="fact"><dt>State</dt><dd>'+p.meta+'</dd></div>';
+  detail.innerHTML=
+    '<div class="kicker">'+CATS[p.cat].label+closeBtn()+'</div>'+
+    '<h2>'+p.name+'</h2>'+
+    '<dl class="facts">'+
+      '<div class="fact"><dt>'+V.originShort+'</dt><dd>'+p.d.toFixed(V.dec)+' km</dd></div>'+
+      '<div class="fact"><dt>Direction</dt><dd>'+p.dir+' · '+p.b.toFixed(0)+'°</dd></div>'+
+      third+
+      '<div class="fact"><dt>Position</dt><dd>'+p.lat.toFixed(3)+', '+p.lon.toFixed(3)+'</dd></div>'+
+    '</dl><p>'+p.note+'</p>';
+  bindClose();
+  place();
+  var n=null; for(var j=0;j<nodes.length;j++){ if(nodes[j].p.id===id){n=nodes[j];break;} }
+  if(n&&!n.on){ tx=(500-p.x*k); ty=(500-p.y*k); clamp(); applyT(); }
+}
+function closeBtn(){return '<button class="closebtn" id="dclose">Clear</button>';}
+function bindClose(){var b=document.getElementById("dclose"); if(b) b.onclick=function(){select(null);};}
+function intro(){
+  if(MODE==="delhi"){
+    var onring=V.places.filter(function(p){return p.cat==="node";}).length;
+    return '<div class="kicker">Ring road sheet</div>'+
+      '<h2>Drawn outward from Azadpur Mandi</h2>'+
+      '<p>The mandi is the vantage point at the centre, marked by the green diamond. Rings run every 5 km from it, and all '+onring+' ring road junctions, plus every neighbourhood and market, are measured from there.</p>'+
+      '<p>Azadpur sits on the inner Ring Road, so that loop runs through the centre of the sheet rather than around it. The Outer Ring Road sits wider, and UER-II, dashed, is the newer western arc from Alipur down to Dwarka.</p>'+
+      '<p>Red squares are junctions on the loops. Green triangles are mandis and depots. Purple rectangles are railway stations and ISBTs, and teal crosses are EV charging points. Diamonds are landmarks, circles are neighbourhoods, and dashed circles are the NCR cities at the rim.</p>'+
+      '<p>The green bands are the routes light commercial vehicles take into the city, arrowed in the direction of travel: off the Dehradun expressway through CRP Camp, Khajuri and Bhajanpura to Akshardham; off the Gurgaon expressway to Dhaula Kuan; and off the Dwarka expressway along Najafgarh Road and Alipur Road.</p>'+
+      '<p>The white lines are the highways and expressways out of the city. NH-9 runs straight through, entering from Rohtak in the west and leaving east past Ghazipur towards Hapur. The yellow lines are expressways: Dehradun and Meerut from Akshardham, Gurgaon from Dhaula Kuan, and Dwarka from Shiv Murti.</p>'+
+      '<div class="hint">Alignments are schematic, not surveyed. Switch to Region for the 200 km sheet.</div>';
+  }
+  var ncr=V.places.filter(function(p){return p.cat==="ncr";}).length;
+  return '<div class="kicker">Region sheet</div>'+
+   '<h2>'+V.places.length+' places, '+ncr+' of them NCR districts</h2>'+
+   '<p>Rings are drawn every 50 km from Connaught Place. The projection is azimuthal equidistant, so the distance from Delhi to any marker is true to scale along the line between them.</p>'+
+   '<p>Squares are NCR district headquarters, circles are everything else. Scroll to zoom, drag to pan.</p>'+
+   '<div class="hint">Switch to Ring roads for a magnified sheet of the city itself.</div>';
+}
+
+/* ---------------- view switch ---------------- */
+function setMode(v){
+  if(v===MODE) return;
+  MODE=v; V=VIEWS[v];
+  document.getElementById("v-region").classList.toggle("view-off",v!=="region");
+  document.getElementById("v-delhi").classList.toggle("view-off",v!=="delhi");
+  [].forEach.call(document.querySelectorAll("#seg button"),function(b){b.classList.toggle("on",b.dataset.v===v);});
+  NODES[v==="region"?"delhi":"region"].forEach(function(n){n.b.classList.add("hide");n.l.classList.add("dim");});
+  nodes=NODES[v];
+  nodes.forEach(function(n){n.b.classList.remove("hide");});
+  active={}; V.cats.forEach(function(c){active[c]=true;});
+  ringMax=V.max; query=""; document.getElementById("q").value="";
+  sel=null; k=1; tx=0; ty=0;
+  buildControls(); render(); select(null); applyT();
+}
+[].forEach.call(document.querySelectorAll("#seg button"),function(b){
+  b.onclick=function(){setMode(b.dataset.v);};});
+
+/* theme */
+document.getElementById("theme").onclick=function(){
+  var cur=document.documentElement.getAttribute("data-theme");
+  var dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme",dark?"light":"dark");
+};
+
+/* go */
+V.cats.forEach(function(c){active[c]=true;});
+nodes.forEach(function(n){n.b.classList.remove("hide");});
+buildControls(); render(); select(null); applyT();
+addEventListener("resize",place);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(place);
+setTimeout(place,180);
+})();
+</script>
+</body>
+</html>
